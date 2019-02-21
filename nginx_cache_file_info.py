@@ -2,9 +2,20 @@
 
 from __future__ import print_function
 import struct
+from argparse import ArgumentParser
 from collections import namedtuple
 from datetime import datetime
 import sys
+import time
+
+
+def parse_date_string(s):
+    for fmt in ('%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+        try:
+            return datetime.strptime(s, fmt)
+        except ValueError:
+            pass
+    raise ValueError('Unable to parse date: {}'.format(s))
 
 
 def string_or_none(bytes):
@@ -120,17 +131,40 @@ def parse_nginx_cache_file(cache_file):
     return hdr, key, http_header, http_body
 
 
-def main(args):
-    for cache_file in sys.argv[1:]:
-        hdr, key, http_header, http_body = parse_nginx_cache_file(cache_file)
-        print('** Nginx cache header ** {}'.format(cache_file))
-        for k, v in hdr._asdict().items():
-            print('{}: {}'.format(k, v))
+def set_expire_nginx_cache_file(cache_file, expiredt):
+    valid_sec = int(time.mktime(expiredt.timetuple()))
+    with open(cache_file, 'r+b') as f:
+        f.seek(8)
+        f.write(struct.pack('<Q', valid_sec))
 
-        print('\n** Nginx cache key **\n{}'.format(key))
-        print('\n** HTTP headers **\n{}'.format(http_header.strip()))
-        print('\n** HTTP body length **\n{}'.format(len(http_body)))
+
+def main():
+    parser = ArgumentParser(description='Examine Nginx cache file')
+    parser.add_argument(
+        '--set-expire', help='Modify expiry date (valid_sec) in cache files')
+    parser.add_argument('files', nargs='+', help='Nginx cache files')
+    parser.add_argument(
+        '-q', '--quiet', action='store_true', help='Hide output')
+    args = parser.parse_args()
+
+    set_expire = None
+    for cache_file in args.files:
+
+        if args.set_expire:
+            set_expire = parse_date_string(args.set_expire)
+            set_expire_nginx_cache_file(cache_file, set_expire)
+
+        if not args.quiet:
+            hdr, key, http_header, http_body = parse_nginx_cache_file(
+                cache_file)
+            print('** Nginx cache header ** {}'.format(cache_file))
+            for k, v in hdr._asdict().items():
+                print('{}: {}'.format(k, v))
+
+            print('\n** Nginx cache key **\n{}'.format(key))
+            print('\n** HTTP headers **\n{}'.format(http_header.strip()))
+            print('\n** HTTP body length **\n{}'.format(len(http_body)))
 
 
 if __name__ == '__main__':
-    main(sys.argv)
+    main()

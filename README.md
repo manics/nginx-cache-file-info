@@ -12,6 +12,14 @@ E.g.:
     ./nginx_cache_file_info.py /var/cache/nginx/a/bc/*
 
 
+## Change expiry date
+
+Nginx cache files include the expiry time, so if the configured Nginx cache expiry time is reduced old files may still be returned.
+Use `--set-date ISO-DATE-TIME` to change the expiry time, e.g.:
+
+    ./nginx_cache_file_info.py c3681f3e515f4b83bbc9672fca3e9929-new --set-expire 2019-02-21T12:00:00
+
+
 ## About
 
 See [`nginx_cache_file_info.py`](nginx_cache_file_info.py) for the technical details of how Nginx cache files are stored.
