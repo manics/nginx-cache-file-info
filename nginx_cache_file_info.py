@@ -92,6 +92,10 @@ def parse_nginx_cache_file(cache_file):
     # valid_msec header_start body_start etag_len
     fields[:11] = list(struct.unpack_from(formats[0], header))
     offset = struct.calcsize(formats[0])
+
+    if fields[0] != 5:
+        raise Exception('Unexpected version: {}'.format(fields[0]))
+
     fields[1] = datetime_or_none(fields[1])
     fields[4] = datetime_or_none(fields[4])
     fields[5] = datetime_or_none(fields[5])
@@ -150,13 +154,14 @@ def main():
     set_expire = None
     for cache_file in args.files:
 
+        hdr, key, http_header, http_body = parse_nginx_cache_file(
+            cache_file)
+
         if args.set_expire:
             set_expire = parse_date_string(args.set_expire)
             set_expire_nginx_cache_file(cache_file, set_expire)
 
         if not args.quiet:
-            hdr, key, http_header, http_body = parse_nginx_cache_file(
-                cache_file)
             print('** Nginx cache header ** {}'.format(cache_file))
             for k, v in hdr._asdict().items():
                 print('{}: {}'.format(k, v))
